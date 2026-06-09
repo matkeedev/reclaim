@@ -50,7 +50,7 @@ pub fn scan(root: &Path) -> Scan {
         })
         .collect();
 
-    hits.sort_by(|a, b| b.size.cmp(&a.size));
+    hits.sort_by_key(|h| std::cmp::Reverse(h.size));
     Scan { hits, dirs_scanned }
 }
 
