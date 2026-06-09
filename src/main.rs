@@ -137,17 +137,30 @@ fn print_summary(hits: &[Hit]) {
 
     println!("by ecosystem:");
     for (kind, (count, size)) in &by_kind {
-        println!("  {:<8} {:>9}  ({} dirs)", kind, format::bytes(*size), count);
+        println!(
+            "  {:<8} {:>9}  ({} dirs)",
+            kind,
+            format::bytes(*size),
+            count
+        );
     }
 
     let total: u64 = hits.iter().map(|h| h.size).sum();
-    println!("\n{} reclaimable across {} dirs", format::bytes(total), hits.len());
+    println!(
+        "\n{} reclaimable across {} dirs",
+        format::bytes(total),
+        hits.len()
+    );
 }
 
 /// Clean the given hits and print a summary.
 fn report(hits: &[Hit]) -> ExitCode {
     let r = cleaner::clean(hits);
-    println!("removed {} dirs, freed {}", r.removed, format::bytes(r.freed));
+    println!(
+        "removed {} dirs, freed {}",
+        r.removed,
+        format::bytes(r.freed)
+    );
 
     if r.failed.is_empty() {
         return ExitCode::SUCCESS;
