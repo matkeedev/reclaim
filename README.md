@@ -1,131 +1,112 @@
 # reclaim
 
-> Find and reclaim disk space from dev junk — `node_modules`, `target/`, `__pycache__` and friends.
+clean up the junk eating your disk — `node_modules`, `target/`, `__pycache__` and friends.
+one keystroke, gone.
 
-A fast, interactive terminal UI that walks your projects, tallies up the
-disposable build & cache directories eating your disk, and lets you wipe them
-in one keystroke. Written in Rust, scans in parallel, ships as a single binary.
+<!-- hero shot: the tui open with a full list of found dirs -->
+![reclaim in action](https://i.imgur.com/Eke1xLF.png)
 
-```
-  reclaim    14 dirs found   6.8 GB selected (11 dirs)  /  7.2 GB total
- ----------------------------------------------------------------------
- > [x]   3.1 GB  node     ~/work/dashboard/node_modules
-   [x]   1.9 GB  rust     ~/work/engine/target
-   [x]   820 MB  next     ~/work/site/.next
-   [ ]   612 MB  node     ~/play/throwaway/node_modules
-   [x]   140 MB  python   ~/ml/notebooks/.venv
- ----------------------------------------------------------------------
-  up/dn move   space toggle   a all/none   enter clean   q quit
-```
+## why
 
-## Why
+i kept losing gigs to old `node_modules` and `target/` folders from projects i
+hadn't touched in months. existing tools only cleaned one ecosystem at a time,
+so i wrote my own. it scans everything, shows you the damage, and only deletes
+what you tick.
 
-Build and dependency folders pile up silently. A laptop with a dozen side
-projects can lose tens of gigabytes to stale `node_modules` and `target/`
-directories you forgot about. `reclaim` finds them all, shows you the damage,
-and only deletes what you confirm.
+written in rust, scans in parallel, ships as a single binary. no telemetry, no
+network, nothing phoning home.
 
-Unlike single-ecosystem cleaners, `reclaim` understands many stacks at once and
-**only** flags a directory when it's genuinely disposable — a `node_modules` is
-ignored unless a `package.json` sits beside it, so it never touches a folder
-that merely shares the name.
+## install
 
-## Install
-
-From source (requires a Rust toolchain):
+needs a rust toolchain ([rustup.rs](https://rustup.rs)).
 
 ```sh
 cargo install --path .
 ```
 
-Or build a release binary directly:
+or just build it:
 
 ```sh
 cargo build --release
 # binary lands at target/release/reclaim
 ```
 
-## Usage
+## usage
 
-Run with no arguments to open the interactive menu:
+run it with nothing and you get a menu:
 
 ```sh
 reclaim
 ```
 
+<!-- screenshot of the menu (options 1/2/3/q) -->
+![the menu](https://i.imgur.com/Eke1xLF.png)
+
+- `1` sweeps your whole home folder at once
+- `2` scans the current folder
+- `3` lets you type a path
+
+every scan tells you how long it took:
+
 ```
-  reclaim - reclaim disk space from dev junk
-  ------------------------------------------
-  1) scan everything   (/home/you)
-  2) scan current folder
-  3) scan a specific folder
-  q) quit
+walked 18204 dirs in 2.4 s — found 14 reclaimable (7.2 GB)
 ```
 
-Pick `1` to sweep your whole home directory at once, `2` for the current
-folder, or `3` to type a path. Every scan prints how long it took and how
-much it walked, e.g. `walked 18204 dirs in 2.4 s - found 14 reclaimable (7.2 GB)`.
-
-You can also skip the menu and scan a path directly:
+prefer to skip the menu? point it straight at a path:
 
 ```sh
 reclaim ~/work
 ```
 
-Just show what *would* be cleaned, no UI and no deletion (prints a per-ecosystem
-summary):
+just want to see what's there, no deleting? `--list` prints a breakdown:
 
 ```sh
 reclaim --list ~/work
 ```
 
-Delete everything found, no prompts (handy in scripts / CI):
+<!-- screenshot of --list output with the by-ecosystem summary -->
+![list output](https://i.imgur.com/okkkZG5.png)
+
+and for scripts, `--yes` nukes everything it finds, no prompts:
 
 ```sh
 reclaim --yes ~/work
 ```
 
-### Keys
+### keys
 
-| Key        | Action            |
-| ---------- | ----------------- |
-| `↑` / `↓`  | move cursor       |
-| `j` / `k`  | move cursor (vim) |
-| `space`    | toggle one        |
-| `a`        | select all / none |
-| `enter`    | clean selected    |
-| `q` / `esc`| quit, change nothing |
+| key         | does           |
+| ----------- | -------------- |
+| `up` / `dn` | move           |
+| `j` / `k`   | move (vim)     |
+| `space`     | toggle one     |
+| `a`         | all / none     |
+| `enter`     | clean selected |
+| `q`         | quit, no harm  |
 
-## What it cleans
+## what it cleans
 
-| Directory                              | Stack        | Requires sibling |
-| -------------------------------------- | ------------ | ---------------- |
-| `node_modules`, `.next`, `.nuxt`       | JS / TS      | `package.json`   |
-| `dist`, `build`                        | JS build     | `package.json`   |
-| `target`                               | Rust         | `Cargo.toml`     |
-| `__pycache__`, `.pytest_cache`, `.venv`| Python       | —                |
-| `.mypy_cache`, `venv`                  | Python       | —                |
-| `.gradle`                              | Java/Gradle  | —                |
-| `vendor`                               | PHP / Go     | `composer.json`  |
-| `.terraform`                           | Terraform    | —                |
+| folder                                  | stack        | needs neighbour |
+| --------------------------------------- | ------------ | --------------- |
+| `node_modules`, `.next`, `.nuxt`        | js / ts      | `package.json`  |
+| `dist`, `build`                         | js build     | `package.json`  |
+| `target`                                | rust         | `Cargo.toml`    |
+| `__pycache__`, `.pytest_cache`, `.venv` | python       | —               |
+| `.mypy_cache`, `venv`                   | python       | —               |
+| `.gradle`                               | java/gradle  | —               |
+| `vendor`                                | php / go     | `composer.json` |
+| `.terraform`                            | terraform    | —               |
 
-Matched directories are never descended into, so a nested `node_modules` is
-counted once and removed as a whole.
+a folder only counts when its marker file sits next to it, so a `node_modules`
+with no `package.json` beside it is left alone. your source code is never
+touched.
 
-## Safety
+## safety
 
-- Nothing is deleted until you press `enter` (or pass `--yes`).
-- A target only counts when its marker file is present, so source folders that
-  happen to be named `build` or `dist` without a `package.json` are left alone.
-- Deletions that fail (permissions, races) are reported, not silently swallowed.
+nothing gets deleted until you hit `enter` (or pass `--yes`). `q` always leaves
+without touching a thing. when in doubt, run `--list` first and look before you
+wipe.
 
-## Development
+## license
 
-```sh
-cargo test       # unit + integration tests
-cargo run -- --list .
-```
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+mit — see [LICENSE](LICENSE).
